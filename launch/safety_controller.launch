@@ -1,0 +1,5 @@
+<launch>
+  <!-- Launch the wall follower with parameters -->
+  <node pkg="safety_controller" name="safety_controller" type="safety_controller.py" output="screen">
+  </node>
+</launch>
