@@ -18,7 +18,8 @@ class SafetyController:
     SAFETY_DRIVE_TOPIC = "/vesc/low_level/ackermann_cmd_mux/input/safety"
     MIN_ANGLE = -2.35500001907
     MAX_ANGLE = 2.35500001907
-    ANGLE_INCREMENT = 0.0475757569075 #1081 pieces of data!
+    ANGLE_INCREMENT = 0.0475757569075 #1081 pieces of data or 0.2498 degrees per point!
+    LASER_MIDPOINT = 541
 
 
     def __init__(self):
@@ -33,6 +34,7 @@ class SafetyController:
 
         # Configurable Parameters
         self.num_items_in_avg = 50 # TODO current value needs to be tuned
+        self.num_items_per_side = 15
 
         # Maps distances from obstacle to maximum forward speed allowed
         # Ex: from 0 to 0.2 units away, allow a maximum speed of 0
@@ -57,7 +59,7 @@ class SafetyController:
     # Handles safety controller logic
     def handleSafety(self):
         # Averages closest num_items_in_avg points to estimate distance to nearest obstacle
-        laser_data = np.array(self.laser_data)
+        laser_data = np.array(self.laser_data.ranges[self.LASER_MIDPOINT - self.num_items_in_range: self.LASER_MIDPOINT + self.num_items_in_range + 1])
         sorted_data = np.sort(laser_data)
         distance_to_obstacle = np.average(sorted_data[0:self.num_items_in_avg])
 
