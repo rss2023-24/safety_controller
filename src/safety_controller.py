@@ -33,8 +33,8 @@ class SafetyController:
         self.pub = rospy.Publisher(self.SAFETY_DRIVE_TOPIC, AckermannDriveStamped) 
 
         # Configurable Parameters
-        self.num_items_in_avg = 50 # TODO current value needs to be tuned
-        self.num_items_per_side = 15
+        self.num_items_in_avg = 10 # TODO current value needs to be tuned
+        self.num_items_per_side = 20 # Approximately 10 degrees (0.25 degrees per item)
 
         # Maps distances from obstacle to maximum forward speed allowed
         # Ex: from 0 to 0.2 units away, allow a maximum speed of 0
