@@ -45,6 +45,31 @@ class SafetyController:
     def handleSafety(self):
         pass
 
+    # Closest distance from origin to a line with equation y = mx + b
+    def distanceToLine(self, m, b):
+        return abs(b)/(math.sqrt(m*m + 1))
+
+    # Sends control commands to the robot
+    def controlRobot(self, speed, steering_angle, steering_angle_velocity=0, acceleration=0, jerk=0 ):
+        drive_command_stamped = AckermannDriveStamped()
+        
+        # Builds command header
+        drive_header = Header()
+        drive_header.stamp = rospy.Time.now() 
+        drive_header.frame_id = "base_link"
+        drive_command_stamped.header = drive_header
+
+        # Builds drive command
+        drive_command = AckermannDrive()
+        drive_command.speed = speed
+        drive_command.steering_angle = steering_angle
+        drive_command.steering_angle_velocity = steering_angle_velocity
+        drive_command.acceleration = acceleration
+        drive_command.jerk = jerk
+        drive_command_stamped.drive = drive_command
+
+        # Publishes message
+        self.pub.publish(drive_command_stamped)
 
 
 
