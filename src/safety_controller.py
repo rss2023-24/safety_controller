@@ -32,7 +32,17 @@ class SafetyController:
         self.pub = rospy.Publisher(self.SAFETY_DRIVE_TOPIC, AckermannDriveStamped) 
 
         # Configurable Parameters
-        self.num_items_in_avg = 50
+        self.num_items_in_avg = 50 # TODO current value needs to be tuned
+
+        # Maps distances from obstacle to maximum forward speed allowed
+        # Ex: from 0 to 0.2 units away, allow a maximum speed of 0
+        # Ex: from 0.2 to 0.4 units away, allow a maximum speed of 0.1
+        # Ex: from 0.4 to infinite units away, have no speed limit
+        self.range_list = [ # TODO current values are just examples
+            (0.2,  0),
+            (0.4, 0.1),
+            (999, 999)
+        ]
 
     # Gather laser scan data
     def gatherLaserData(self, laser_scan):
@@ -51,8 +61,18 @@ class SafetyController:
         sorted_data = np.sort(laser_data)
         distance_to_obstacle = np.average(sorted_data[0:self.num_items_in_avg])
 
-
-
+        # Figures out the maximum speed in which we can approach the obstacle
+        speed_limit = 0
+        for max_distance, max_speed in self.range_list:
+            speed_limit = max_speed
+            if distance_to_obstacle < max_distance:
+                break 
+        
+        # If command is too fast, override it
+        last_command_speed = self.last_drive_command.drive.speed
+        if last_command_speed > speed_limit:
+            self.controlRobot(0, 0)
+    
     # Closest distance from origin to a line with equation y = mx + b
     def distanceToLine(self, m, b):
         return abs(b)/(math.sqrt(m*m + 1))
@@ -78,8 +98,6 @@ class SafetyController:
 
         # Publishes message
         self.pub.publish(drive_command_stamped)
-
-
 
 if __name__ == "__main__":
     rospy.init_node('safety_controller')
