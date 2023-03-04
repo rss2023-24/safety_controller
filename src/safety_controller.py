@@ -16,6 +16,9 @@ class SafetyController:
     LASER_SCAN_TOPIC = "/scan"
     NAV_OUTPUT_TOPIC = "/vesc/high_level/ackermann_cmd_mux/output"
     SAFETY_DRIVE_TOPIC = "/vesc/low_level/ackermann_cmd_mux/input/safety"
+    MIN_ANGLE = -2.35500001907
+    MAX_ANGLE = 2.35500001907
+    ANGLE_INCREMENT = 0.0475757569075 #1081 pieces of data!
 
 
     def __init__(self):
@@ -29,7 +32,6 @@ class SafetyController:
         self.pub = rospy.Publisher(self.SAFETY_DRIVE_TOPIC, AckermannDriveStamped) 
 
         # Configurable Parameters
-        # TODO
 
     # Gather laser scan data
     def gatherLaserData(self, laser_scan):
