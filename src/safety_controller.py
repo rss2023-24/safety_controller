@@ -32,6 +32,7 @@ class SafetyController:
         self.pub = rospy.Publisher(self.SAFETY_DRIVE_TOPIC, AckermannDriveStamped) 
 
         # Configurable Parameters
+        self.num_items_in_avg = 50
 
     # Gather laser scan data
     def gatherLaserData(self, laser_scan):
@@ -45,7 +46,12 @@ class SafetyController:
 
     # Handles safety controller logic
     def handleSafety(self):
-        pass
+        # Averages closest num_items_in_avg points to estimate distance to nearest obstacle
+        laser_data = np.array(self.laser_data)
+        sorted_data = np.sort(laser_data)
+        distance_to_obstacle = np.average(sorted_data[0:self.num_items_in_avg])
+
+
 
     # Closest distance from origin to a line with equation y = mx + b
     def distanceToLine(self, m, b):
