@@ -10,7 +10,6 @@ from sensor_msgs.msg import LaserScan, PointCloud2
 import laser_geometry.laser_geometry as lg
 from std_msgs.msg import Header
 from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
-from visualization_tools import *
 
 class SafetyController:
     LASER_SCAN_TOPIC = "/scan"
@@ -20,6 +19,8 @@ class SafetyController:
     MAX_ANGLE = 2.35500001907
     ANGLE_INCREMENT = 0.0475757569075 #1081 pieces of data or 0.2498 degrees per point!
     LASER_MIDPOINT = 541
+    MIN_DISTANCE = 0.4
+    TIME_CONST = 0.3
 
 
     def __init__(self):
@@ -36,16 +37,6 @@ class SafetyController:
         self.num_items_in_avg = 10 # TODO current value needs to be tuned
         self.num_items_per_side = 20 # Approximately 10 degrees (0.25 degrees per item)
 
-        # Maps distances from obstacle to maximum forward speed allowed
-        # Ex: from 0 to 0.2 units away, allow a maximum speed of 0
-        # Ex: from 0.2 to 0.4 units away, allow a maximum speed of 0.1
-        # Ex: from 0.4 to infinite units away, have no speed limit
-        self.range_list = [ # TODO current values are just examples
-            (0.2,  0),
-            (0.4, 0.1),
-            (999, 999)
-        ]
-
     # Gather laser scan data
     def gatherLaserData(self, laser_scan):
         self.laser_data = laser_scan
@@ -54,25 +45,21 @@ class SafetyController:
     # Gather last drive command
     def gatherDriveCommand(self, last_drive_command):
         self.last_drive_command = last_drive_command
-        self.handleSafety()
 
     # Handles safety controller logic
     def handleSafety(self):
+        if self.laser_data is None or self.last_drive_command is None:
+            return
         # Averages closest num_items_in_avg points to estimate distance to nearest obstacle
-        laser_data = np.array(self.laser_data.ranges[self.LASER_MIDPOINT - self.num_items_in_range: self.LASER_MIDPOINT + self.num_items_in_range + 1])
+        slice_start = self.LASER_MIDPOINT - self.num_items_per_side
+        slice_end = slice_start + (2 * self.num_items_per_side)
+        laser_data = np.array(self.laser_data.ranges)[slice_start:slice_end]
         sorted_data = np.sort(laser_data)
         distance_to_obstacle = np.average(sorted_data[0:self.num_items_in_avg])
 
-        # Figures out the maximum speed in which we can approach the obstacle
-        speed_limit = 0
-        for max_distance, max_speed in self.range_list:
-            speed_limit = max_speed
-            if distance_to_obstacle < max_distance:
-                break 
-        
-        # If command is too fast, override it
         last_command_speed = self.last_drive_command.drive.speed
-        if last_command_speed > speed_limit:
+
+        if (last_command_speed * self.TIME_CONST) + self.MIN_DISTANCE >= distance_to_obstacle:
             self.controlRobot(0, 0)
     
     # Closest distance from origin to a line with equation y = mx + b
