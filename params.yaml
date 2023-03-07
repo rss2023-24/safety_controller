@@ -1,6 +1,7 @@
 drive_topic: "/vesc/ackermann_cmd_mux/input/navigation"
 velocity: 0.7
-desired_distance: 0.3
+desired_distance_front: 0.3
+desired_distance_side: 0.5
 time_constant: 0.3
 num_items_in_avg: 10
-num_items_per_side: 20
+num_items_per_side: 100

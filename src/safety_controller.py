@@ -36,8 +36,6 @@ class SafetyController:
         # Configurable Parameters
         self.num_items_in_avg = 0
         self.num_items_per_side = 0
-        # self.num_items_in_avg = rospy.get_param("safety_controller/num_items_in_avg") # TODO current value needs to be tuned
-        # self.num_items_per_side = rospy.get_param("safety_controller/num_items_per_side") # Approximately 10 degrees (0.25 degrees per item)
 
     # Gather laser scan data
     def gatherLaserData(self, laser_scan):
@@ -50,22 +48,39 @@ class SafetyController:
 
     # Handles safety controller logic
     def handleSafety(self):
+        # Sets up variables
         self.num_items_in_avg = rospy.get_param("safety_controller/num_items_in_avg") # TODO current value needs to be tuned
         self.num_items_per_side = rospy.get_param("safety_controller/num_items_per_side")
-        MIN_DISTANCE = rospy.get_param("safety_controller/desired_distance")
+        MIN_DISTANCE_SIDE = rospy.get_param("safety_controller/desired_distance_side")
+        MIN_DISTANCE_FRONT = rospy.get_param("safety_controller/desired_distance_front")
         TIME_CONST = rospy.get_param("safety_controller/time_constant")
+
         if self.laser_data is None or self.last_drive_command is None:
             return
-        # Averages closest num_items_in_avg points to estimate distance to nearest obstacle
+        
+        # Gathers data for our 3 sections
         slice_start = self.LASER_MIDPOINT - self.num_items_per_side
         slice_end = slice_start + (2 * self.num_items_per_side)
         laser_data = np.array(self.laser_data.ranges)[slice_start:slice_end]
-        sorted_data = np.sort(laser_data)
-        distance_to_obstacle = np.average(sorted_data[0:self.num_items_in_avg])
+        left, front, right = np.array_split(laser_data, 3)
 
+        # Averages closest num_items_in_avg points to estimate distance to nearest obstacle
+        sorted_left = np.sort(left)
+        obstacle_distance_left = np.average(sorted_left[0:self.num_items_in_avg])
+        sorted_front = np.sort(front)
+        obstacle_distance_front = np.average(sorted_front[0:self.num_items_in_avg])
+        sorted_right = np.sort(right)
+        obstacle_distance_right = np.average(sorted_right[0:self.num_items_in_avg])
+
+        # Stops car if one of the sections are violated
         last_command_speed = self.last_drive_command.drive.speed
-        print('speed*time_const + min', (last_command_speed * TIME_CONST) + MIN_DISTANCE, "Distance_to_obstacle", distance_to_obstacle)
-        if (last_command_speed * TIME_CONST) + MIN_DISTANCE >= distance_to_obstacle:
+        
+        print("left:", obstacle_distance_left, "front:", obstacle_distance_front, "right:", obstacle_distance_right)
+        if (last_command_speed * TIME_CONST) + MIN_DISTANCE_SIDE >= obstacle_distance_left:
+            self.controlRobot(0, 0)
+        if (last_command_speed * TIME_CONST) + MIN_DISTANCE_FRONT >= obstacle_distance_front:
+            self.controlRobot(0, 0)
+        if (last_command_speed * TIME_CONST) + MIN_DISTANCE_SIDE >= obstacle_distance_right:
             self.controlRobot(0, 0)
     
     # Closest distance from origin to a line with equation y = mx + b
