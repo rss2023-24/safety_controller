@@ -18,7 +18,9 @@ class SafetyController:
     MIN_ANGLE = -2.35500001907
     MAX_ANGLE = 2.35500001907
     ANGLE_INCREMENT = 0.0475757569075 #1081 pieces of data or 0.2498 degrees per point!
-    LASER_MIDPOINT = 541
+    RIGHT_MIDPOINT = 361
+    FRONT_MIDPOINT = 541
+    LEFT_MIDPOINT = 721
     # MIN_DISTANCE = rospy.get_param("safety_controller/desired_distance")
     # TIME_CONST = rospy.get_param("safety_controller/time_constant")
 
@@ -50,7 +52,8 @@ class SafetyController:
     def handleSafety(self):
         # Sets up variables
         self.num_items_in_avg = rospy.get_param("safety_controller/num_items_in_avg") # TODO current value needs to be tuned
-        self.num_items_per_side = rospy.get_param("safety_controller/num_items_per_side")
+        self.num_items_per_side_front = rospy.get_param("safety_controller/num_items_per_side_front")
+        self.num_items_per_side_side = rospy.get_param("safety_controller/num_items_per_side_side")
         MIN_DISTANCE_SIDE = rospy.get_param("safety_controller/desired_distance_side")
         MIN_DISTANCE_FRONT = rospy.get_param("safety_controller/desired_distance_front")
         TIME_CONST = rospy.get_param("safety_controller/time_constant")
@@ -59,10 +62,10 @@ class SafetyController:
             return
         
         # Gathers data for our 3 sections
-        slice_start = self.LASER_MIDPOINT - self.num_items_per_side
-        slice_end = slice_start + (2 * self.num_items_per_side)
-        laser_data = np.array(self.laser_data.ranges)[slice_start:slice_end]
-        left, front, right = np.array_split(laser_data, 3)
+        laser_data = np.array(self.laser_data.ranges)
+        right = laser_data[(self.RIGHT_MIDPOINT - self.num_items_per_side_side):(self.RIGHT_MIDPOINT + self.num_items_per_side_side)]
+        front = laser_data[(self.FRONT_MIDPOINT - self.num_items_per_side_front):(self.FRONT_MIDPOINT + self.num_items_per_side_front)]
+        left = laser_data[(self.LEFT_MIDPOINT - self.num_items_per_side_side):(self.LEFT_MIDPOINT + self.num_items_per_side_side)]
 
         # Averages closest num_items_in_avg points to estimate distance to nearest obstacle
         sorted_left = np.sort(left)
