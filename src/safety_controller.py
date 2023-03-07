@@ -78,7 +78,7 @@ class SafetyController:
         # Stops car if one of the sections are violated
         last_command_speed = self.last_drive_command.drive.speed
         
-        print("left:", obstacle_distance_left, "front:", obstacle_distance_front, "right:", obstacle_distance_right)
+        print("left:", obstacle_distance_left- (last_command_speed * TIME_CONST), "front:", obstacle_distance_front- (last_command_speed * TIME_CONST), "right:", obstacle_distance_right- (last_command_speed * TIME_CONST))
         if (last_command_speed * TIME_CONST) + MIN_DISTANCE_SIDE >= obstacle_distance_left:
             self.controlRobot(0, 0)
         if (last_command_speed * TIME_CONST) + MIN_DISTANCE_FRONT >= obstacle_distance_front:
