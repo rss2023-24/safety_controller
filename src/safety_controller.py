@@ -19,8 +19,8 @@ class SafetyController:
     MAX_ANGLE = 2.35500001907
     ANGLE_INCREMENT = 0.0475757569075 #1081 pieces of data or 0.2498 degrees per point!
     LASER_MIDPOINT = 541
-    MIN_DISTANCE = 0.4
-    TIME_CONST = 0.3
+    # MIN_DISTANCE = rospy.get_param("safety_controller/desired_distance")
+    # TIME_CONST = rospy.get_param("safety_controller/time_constant")
 
 
     def __init__(self):
@@ -34,8 +34,10 @@ class SafetyController:
         self.pub = rospy.Publisher(self.SAFETY_DRIVE_TOPIC, AckermannDriveStamped) 
 
         # Configurable Parameters
-        self.num_items_in_avg = 10 # TODO current value needs to be tuned
-        self.num_items_per_side = 20 # Approximately 10 degrees (0.25 degrees per item)
+        self.num_items_in_avg = 0
+        self.num_items_per_side = 0
+        # self.num_items_in_avg = rospy.get_param("safety_controller/num_items_in_avg") # TODO current value needs to be tuned
+        # self.num_items_per_side = rospy.get_param("safety_controller/num_items_per_side") # Approximately 10 degrees (0.25 degrees per item)
 
     # Gather laser scan data
     def gatherLaserData(self, laser_scan):
@@ -48,6 +50,10 @@ class SafetyController:
 
     # Handles safety controller logic
     def handleSafety(self):
+        self.num_items_in_avg = rospy.get_param("safety_controller/num_items_in_avg") # TODO current value needs to be tuned
+        self.num_items_per_side = rospy.get_param("safety_controller/num_items_per_side")
+        MIN_DISTANCE = rospy.get_param("safety_controller/desired_distance")
+        TIME_CONST = rospy.get_param("safety_controller/time_constant")
         if self.laser_data is None or self.last_drive_command is None:
             return
         # Averages closest num_items_in_avg points to estimate distance to nearest obstacle
@@ -58,8 +64,8 @@ class SafetyController:
         distance_to_obstacle = np.average(sorted_data[0:self.num_items_in_avg])
 
         last_command_speed = self.last_drive_command.drive.speed
-
-        if (last_command_speed * self.TIME_CONST) + self.MIN_DISTANCE >= distance_to_obstacle:
+        print('speed*time_const', last_command_speed * TIME_CONST)
+        if (last_command_speed * TIME_CONST) + MIN_DISTANCE >= distance_to_obstacle:
             self.controlRobot(0, 0)
     
     # Closest distance from origin to a line with equation y = mx + b
