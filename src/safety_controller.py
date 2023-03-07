@@ -64,7 +64,7 @@ class SafetyController:
         distance_to_obstacle = np.average(sorted_data[0:self.num_items_in_avg])
 
         last_command_speed = self.last_drive_command.drive.speed
-        print('speed*time_const', last_command_speed * TIME_CONST)
+        print('speed*time_const + min', (last_command_speed * TIME_CONST) + MIN_DISTANCE, "Distance_to_obstacle", distance_to_obstacle)
         if (last_command_speed * TIME_CONST) + MIN_DISTANCE >= distance_to_obstacle:
             self.controlRobot(0, 0)
     
