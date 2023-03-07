@@ -69,11 +69,11 @@ class SafetyController:
 
         # Averages closest num_items_in_avg points to estimate distance to nearest obstacle
         sorted_left = np.sort(left)
-        obstacle_distance_left = np.average(sorted_left[0:self.num_items_in_avg])
+        obstacle_distance_left = np.median(sorted_left[0:self.num_items_in_avg])
         sorted_front = np.sort(front)
-        obstacle_distance_front = np.average(sorted_front[0:self.num_items_in_avg])
+        obstacle_distance_front = np.median(sorted_front[0:self.num_items_in_avg])
         sorted_right = np.sort(right)
-        obstacle_distance_right = np.average(sorted_right[0:self.num_items_in_avg])
+        obstacle_distance_right = np.median(sorted_right[0:self.num_items_in_avg])
 
         # Stops car if one of the sections are violated
         last_command_speed = self.last_drive_command.drive.speed
