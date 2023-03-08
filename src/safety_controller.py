@@ -79,12 +79,21 @@ class SafetyController:
         last_command_speed = self.last_drive_command.drive.speed
         
         print("left:", obstacle_distance_left- (last_command_speed * TIME_CONST), "front:", obstacle_distance_front- (last_command_speed * TIME_CONST), "right:", obstacle_distance_right- (last_command_speed * TIME_CONST))
+
+        override = False
+
         if (last_command_speed * TIME_CONST) + MIN_DISTANCE_SIDE >= obstacle_distance_left:
             self.controlRobot(0, 0)
+            override = True
         if (last_command_speed * TIME_CONST) + MIN_DISTANCE_FRONT >= obstacle_distance_front:
             self.controlRobot(0, 0)
+            override = True
         if (last_command_speed * TIME_CONST) + MIN_DISTANCE_SIDE >= obstacle_distance_right:
             self.controlRobot(0, 0)
+            override = True
+        
+        if override:
+            print("Safety override activated")
     
     # Closest distance from origin to a line with equation y = mx + b
     def distanceToLine(self, m, b):
