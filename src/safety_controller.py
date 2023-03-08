@@ -13,7 +13,7 @@ from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
 
 class SafetyController:
     LASER_SCAN_TOPIC = "/scan"
-    NAV_OUTPUT_TOPIC = "/vesc/low_level/ackermann_cmd_mux/output"
+    NAV_OUTPUT_TOPIC = "/vesc/high_level/ackermann_cmd_mux/output"
     SAFETY_DRIVE_TOPIC = "/vesc/low_level/ackermann_cmd_mux/input/safety"
 
     MIN_ANGLE_DEG = -135
@@ -74,14 +74,15 @@ class SafetyController:
             'left': (self.LEFT_MIDPOINT, self.num_items_per_side_side, MIN_DISTANCE_SIDE)
         }
 
-        est_acceleration = 1.167
-        max_stopping_dist = .3
-        travel_distance = min(max_stopping_dist, last_command_speed**2 / (2 * est_acceleration))
+        v_const = 0.33
+        travel_distance = last_command_speed * v_const
         for direction in safety_controller_vals.keys():
             midpoint, items_per_side, min_dist = safety_controller_vals[direction]
+            midpoint = int(midpoint)
             range_slice = laser_data[midpoint - items_per_side : midpoint + items_per_side]
             sorted_slice = np.sort(range_slice)
             obstacle_distance = np.median(sorted_slice[:self.num_items_in_avg])
+            print(direction, obstacle_distance)
             if travel_distance + min_dist >= obstacle_distance:
                 self.controlRobot(0, 0)
 
