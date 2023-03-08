@@ -94,6 +94,8 @@ class SafetyController:
         
         if override:
             print("Safety override activated")
+        else:
+            print("Not active")
     
     # Closest distance from origin to a line with equation y = mx + b
     def distanceToLine(self, m, b):
