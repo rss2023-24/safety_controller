@@ -15,12 +15,16 @@ class SafetyController:
     LASER_SCAN_TOPIC = "/scan"
     NAV_OUTPUT_TOPIC = "/vesc/high_level/ackermann_cmd_mux/output"
     SAFETY_DRIVE_TOPIC = "/vesc/low_level/ackermann_cmd_mux/input/safety"
-    MIN_ANGLE = -2.35500001907
-    MAX_ANGLE = 2.35500001907
-    ANGLE_INCREMENT = 0.0475757569075 #1081 pieces of data or 0.2498 degrees per point!
-    RIGHT_MIDPOINT = 361
-    FRONT_MIDPOINT = 541
-    LEFT_MIDPOINT = 721
+
+    MIN_ANGLE_DEG = -135
+    MAX_ANGLE_DEG = 135
+    NUM_RANGES = 1081.
+    ANGLE_INCREMENT_DEG = (MAX_ANGLE_DEG - MIN_ANGLE_DEG) / NUM_RANGES #1081 pieces of data or 0.2498 degrees per point!
+
+    SIDE_ANGLE_DEG = 45 # angle to center of right/left cones from 0
+    FRONT_MIDPOINT = NUM_RANGES // 2
+    RIGHT_MIDPOINT = FRONT_MIDPOINT - (SIDE_ANGLE_DEG // ANGLE_INCREMENT_DEG)
+    LEFT_MIDPOINT = FRONT_MIDPOINT + (SIDE_ANGLE_DEG // ANGLE_INCREMENT_DEG)
     # MIN_DISTANCE = rospy.get_param("safety_controller/desired_distance")
     # TIME_CONST = rospy.get_param("safety_controller/time_constant")
 
@@ -51,7 +55,7 @@ class SafetyController:
     # Handles safety controller logic
     def handleSafety(self):
         # Sets up variables
-        self.num_items_in_avg = rospy.get_param("safety_controller/num_items_in_avg") # TODO current value needs to be tuned
+        self.num_items_in_avg = rospy.get_param("safety_controller/num_items_in_avg")
         self.num_items_per_side_front = rospy.get_param("safety_controller/num_items_per_side_front")
         self.num_items_per_side_side = rospy.get_param("safety_controller/num_items_per_side_side")
         MIN_DISTANCE_SIDE = rospy.get_param("safety_controller/desired_distance_side")
@@ -63,32 +67,22 @@ class SafetyController:
         
         # Gathers data for our 3 sections
         laser_data = np.array(self.laser_data.ranges)
-        right = laser_data[(self.RIGHT_MIDPOINT - self.num_items_per_side_side):(self.RIGHT_MIDPOINT + self.num_items_per_side_side)]
-        front = laser_data[(self.FRONT_MIDPOINT - self.num_items_per_side_front):(self.FRONT_MIDPOINT + self.num_items_per_side_front)]
-        left = laser_data[(self.LEFT_MIDPOINT - self.num_items_per_side_side):(self.LEFT_MIDPOINT + self.num_items_per_side_side)]
-
-        # Averages closest num_items_in_avg points to estimate distance to nearest obstacle
-        sorted_left = np.sort(left)
-        obstacle_distance_left = np.median(sorted_left[0:self.num_items_in_avg])
-        sorted_front = np.sort(front)
-        obstacle_distance_front = np.median(sorted_front[0:self.num_items_in_avg])
-        sorted_right = np.sort(right)
-        obstacle_distance_right = np.median(sorted_right[0:self.num_items_in_avg])
-
-        # Stops car if one of the sections are violated
         last_command_speed = self.last_drive_command.drive.speed
-        
-        print("left:", obstacle_distance_left- (last_command_speed * TIME_CONST), "front:", obstacle_distance_front- (last_command_speed * TIME_CONST), "right:", obstacle_distance_right- (last_command_speed * TIME_CONST))
-        if (last_command_speed * TIME_CONST) + MIN_DISTANCE_SIDE >= obstacle_distance_left:
-            self.controlRobot(0, 0)
-        if (last_command_speed * TIME_CONST) + MIN_DISTANCE_FRONT >= obstacle_distance_front:
-            self.controlRobot(0, 0)
-        if (last_command_speed * TIME_CONST) + MIN_DISTANCE_SIDE >= obstacle_distance_right:
-            self.controlRobot(0, 0)
-    
-    # Closest distance from origin to a line with equation y = mx + b
-    def distanceToLine(self, m, b):
-        return abs(b)/(math.sqrt(m*m + 1))
+
+        safety_controller_vals = {
+            'right': (self.RIGHT_MIDPOINT, self.num_items_per_side_side, MIN_DISTANCE_SIDE),
+            'front': (self.FRONT_MIDPOINT, self.num_items_per_side_front, MIN_DISTANCE_FRONT),
+            'left': (self.LEFT_MIDPOINT, self.num_items_per_side_side, MIN_DISTANCE_SIDE)
+        }
+
+        for direction in safety_controller_vals.keys():
+            midpoint, items_per_side, min_dist = safety_controller_vals[direction]
+            range_slice = laser_data[midpoint - items_per_side : midpoint + items_per_side]
+            sorted_slice = np.sort(range_slice)
+            obstacle_distance = np.median(sorted_slice[:self.num_items_in_avg])
+            if (last_command_speed * TIME_CONST) + min_dist >= obstacle_distance:
+                self.controlRobot(0, 0)
+            print(direction, obstacle_distance - (last_command_speed * TIME_CONST))
 
     # Sends control commands to the robot
     def controlRobot(self, speed, steering_angle, steering_angle_velocity=0, acceleration=0, jerk=0 ):
