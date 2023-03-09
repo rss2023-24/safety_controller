@@ -21,12 +21,10 @@ class SafetyController:
     NUM_RANGES = 1081.
     ANGLE_INCREMENT_DEG = (MAX_ANGLE_DEG - MIN_ANGLE_DEG) / NUM_RANGES #1081 pieces of data or 0.2498 degrees per point!
 
-    SIDE_ANGLE_DEG = 45 # angle to center of right/left cones from 0
+    SIDE_ANGLE_DEG = 30 # angle to center of right/left cones from 0
     FRONT_MIDPOINT = NUM_RANGES // 2
     RIGHT_MIDPOINT = FRONT_MIDPOINT - (SIDE_ANGLE_DEG // ANGLE_INCREMENT_DEG)
     LEFT_MIDPOINT = FRONT_MIDPOINT + (SIDE_ANGLE_DEG // ANGLE_INCREMENT_DEG)
-    # MIN_DISTANCE = rospy.get_param("safety_controller/desired_distance")
-    # TIME_CONST = rospy.get_param("safety_controller/time_constant")
 
 
     def __init__(self):
@@ -68,23 +66,34 @@ class SafetyController:
         laser_data = np.array(self.laser_data.ranges)
         last_command_speed = self.last_drive_command.drive.speed
 
-        safety_controller_vals = {
-            'right': (self.RIGHT_MIDPOINT, self.num_items_per_side_side, MIN_DISTANCE_SIDE),
-            'front': (self.FRONT_MIDPOINT, self.num_items_per_side_front, MIN_DISTANCE_FRONT),
-            'left': (self.LEFT_MIDPOINT, self.num_items_per_side_side, MIN_DISTANCE_SIDE)
+        cone_vals = {
+            'right': (self.RIGHT_MIDPOINT, self.num_items_per_side_side),
+            'front': (self.FRONT_MIDPOINT, self.num_items_per_side_front),
+            'left': (self.LEFT_MIDPOINT, self.num_items_per_side_side), 
         }
 
         v_const = 0.33
-        travel_distance = last_command_speed * v_const
-        for direction in safety_controller_vals.keys():
-            midpoint, items_per_side, min_dist = safety_controller_vals[direction]
+        if last_command_speed <= 1.5:
+            travel_distance = last_command_speed * v_const
+        else:
+            travel_distance = 0.85
+        obstacle_distance = dict()
+        for direction in cone_vals.keys():
+            midpoint, items_per_side = cone_vals[direction]
             midpoint = int(midpoint)
             range_slice = laser_data[midpoint - items_per_side : midpoint + items_per_side]
             sorted_slice = np.sort(range_slice)
-            obstacle_distance = np.median(sorted_slice[:self.num_items_in_avg])
-            print(direction, obstacle_distance)
-            if travel_distance + min_dist >= obstacle_distance:
-                self.controlRobot(0, 0)
+            obstacle_distance[direction] = np.median(sorted_slice[:self.num_items_in_avg])
+
+        print(obstacle_distance)
+        stop_front = travel_distance + MIN_DISTANCE_FRONT >= obstacle_distance['front']
+        stop_side = (
+            (   travel_distance + MIN_DISTANCE_SIDE >= obstacle_distance['right']
+                or travel_distance + MIN_DISTANCE_SIDE >= obstacle_distance['left']
+            ) and obstacle_distance['front'] < 0.8)
+        
+        if stop_front or stop_side:
+            self.controlRobot(0, 0)
 
     # Sends control commands to the robot
     def controlRobot(self, speed, steering_angle, steering_angle_velocity=0, acceleration=0, jerk=0 ):
