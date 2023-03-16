@@ -85,7 +85,7 @@ class SafetyController:
             sorted_slice = np.sort(range_slice)
             obstacle_distance[direction] = np.median(sorted_slice[:self.num_items_in_avg])
 
-        print(obstacle_distance)
+        #print(obstacle_distance)
         stop_front = travel_distance + MIN_DISTANCE_FRONT >= obstacle_distance['front']
         stop_side = (
             (   travel_distance + MIN_DISTANCE_SIDE >= obstacle_distance['right']
